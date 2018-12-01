@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="14460.31" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="RoN-h0-uBD">
-    <device id="retina4_7" orientation="portrait">
+    <device id="retina5_9" orientation="portrait">
         <adaptation id="fullscreen"/>
     </device>
     <dependencies>
@@ -15,7 +15,7 @@
             <objects>
                 <navigationController id="RoN-h0-uBD" sceneMemberID="viewController">
                     <navigationBar key="navigationBar" contentMode="scaleToFill" insetsLayoutMarginsFromSafeArea="NO" id="hNW-5m-Omi">
-                        <rect key="frame" x="0.0" y="20" width="375" height="44"/>
+                        <rect key="frame" x="0.0" y="44" width="375" height="44"/>
                         <autoresizingMask key="autoresizingMask"/>
                     </navigationBar>
                     <connections>
@@ -31,22 +31,22 @@
             <objects>
                 <viewController id="jF4-A0-Eq6" customClass="SampleListViewController" customModule="Samples" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="Smh-Bd-AAc">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="28" sectionFooterHeight="28" translatesAutoresizingMaskIntoConstraints="NO" id="7IS-PU-x0P">
-                                <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                                <rect key="frame" x="0.0" y="0.0" width="375" height="778"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <prototypes>
                                     <tableViewCell clipsSubviews="YES" contentMode="scaleToFill" preservesSuperviewLayoutMargins="YES" selectionStyle="default" indentationWidth="10" reuseIdentifier="Cell" textLabel="M0G-C8-hAO" style="IBUITableViewCellStyleDefault" id="ySY-oA-g81">
                                         <rect key="frame" x="0.0" y="28" width="375" height="44"/>
                                         <autoresizingMask key="autoresizingMask"/>
                                         <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" preservesSuperviewLayoutMargins="YES" insetsLayoutMarginsFromSafeArea="NO" tableViewCell="ySY-oA-g81" id="sXB-nH-2g2">
-                                            <rect key="frame" x="0.0" y="0.0" width="375" height="43.5"/>
+                                            <rect key="frame" x="0.0" y="0.0" width="375" height="43.666666666666664"/>
                                             <autoresizingMask key="autoresizingMask"/>
                                             <subviews>
                                                 <label opaque="NO" multipleTouchEnabled="YES" contentMode="left" insetsLayoutMarginsFromSafeArea="NO" text="Title" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" id="M0G-C8-hAO">
-                                                    <rect key="frame" x="15" y="0.0" width="345" height="43.5"/>
+                                                    <rect key="frame" x="15" y="0.0" width="345" height="43.666666666666664"/>
                                                     <autoresizingMask key="autoresizingMask"/>
                                                     <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                                     <nil key="textColor"/>
@@ -81,17 +81,17 @@
             <objects>
                 <viewController id="RpE-lI-27a" customClass="TabBarContentViewController" customModule="Samples" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="JER-jz-KSq">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Item 2" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="AiP-dx-mFn">
-                                <rect key="frame" x="163.5" y="323" width="48" height="21"/>
+                                <rect key="frame" x="163.66666666666666" y="395.66666666666669" width="48" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="IvG-yp-yzI">
-                                <rect key="frame" x="20" y="20" width="39" height="30"/>
+                                <rect key="frame" x="20" y="44" width="39" height="30"/>
                                 <state key="normal" title="Close"/>
                                 <connections>
                                     <action selector="closeWithSender:" destination="RpE-lI-27a" eventType="touchUpInside" id="hj3-Xv-6Gq"/>
@@ -112,24 +112,24 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="NhZ-u5-Beh" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="326" y="1575"/>
+            <point key="canvasLocation" x="-308" y="1546"/>
         </scene>
         <!--Item 1-->
         <scene sceneID="m6X-j6-yBM">
             <objects>
                 <viewController id="lto-Zc-Vtp" customClass="TabBarContentViewController" customModule="Samples" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="ji9-Ez-N7i">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="812"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="Item 1" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="uoW-c8-9wx">
-                                <rect key="frame" x="164.5" y="323" width="46" height="21"/>
+                                <rect key="frame" x="164.66666666666666" y="395.66666666666669" width="46" height="21"/>
                                 <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                 <nil key="textColor"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="eFN-tN-4Ct">
-                                <rect key="frame" x="20" y="20" width="39" height="30"/>
+                                <rect key="frame" x="20" y="44" width="39" height="30"/>
                                 <state key="normal" title="Close"/>
                                 <connections>
                                     <action selector="closeWithSender:" destination="bYI-y3-Rzb" eventType="touchUpInside" id="YL4-GP-ZEZ"/>
@@ -150,7 +150,7 @@
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="bkL-bc-hZC" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-380" y="1576"/>
+            <point key="canvasLocation" x="-962" y="1546"/>
         </scene>
         <!--Tab Bar View Controller-->
         <scene sceneID="nQ5-PV-qFw">
@@ -168,29 +168,29 @@
                 </tabBarController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="Z9x-EI-p2b" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="-183" y="806"/>
+            <point key="canvasLocation" x="-706" y="749"/>
         </scene>
         <!--Modal View Controller-->
         <scene sceneID="C9P-Ns-Qrq">
             <objects>
                 <viewController storyboardIdentifier="ModalViewController" id="bYI-y3-Rzb" customClass="ModalViewController" customModule="Samples" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="qwo-GK-p1U">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="778"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="vut-mK-Y4t" customClass="SafeAreaView" customModule="Samples" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="667" width="375" height="0.0"/>
+                                <rect key="frame" x="0.0" y="744" width="375" height="34"/>
                                 <color key="backgroundColor" white="0.66666666666666663" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                             </view>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="sbF-Az-7sy">
-                                <rect key="frame" x="20" y="20" width="39" height="30"/>
+                                <rect key="frame" x="20" y="44" width="39" height="30"/>
                                 <state key="normal" title="Close"/>
                                 <connections>
                                     <action selector="closeWithSender:" destination="bYI-y3-Rzb" eventType="touchUpInside" id="MSC-ch-YJK"/>
                                 </connections>
                             </button>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="top" spacing="44" translatesAutoresizingMaskIntoConstraints="NO" id="9p4-06-y2T">
-                                <rect key="frame" x="139.5" y="108" width="96" height="252"/>
+                                <rect key="frame" x="139.66666666666666" y="132" width="96" height="252"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="i9x-x5-n1q">
                                         <rect key="frame" x="0.0" y="0.0" width="80" height="30"/>
@@ -236,24 +236,25 @@
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="GBa-yx-8to"/>
                     </view>
+                    <size key="freeformSize" width="375" height="778"/>
                     <connections>
                         <outlet property="safeAreaView" destination="vut-mK-Y4t" id="r9P-XF-wLd"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="fbi-LZ-M4Y" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="561" y="806"/>
+            <point key="canvasLocation" x="1375" y="734"/>
         </scene>
         <!--Nested Scroll View Controller-->
         <scene sceneID="TfC-A3-4R0">
             <objects>
                 <viewController storyboardIdentifier="NestedScrollViewController" id="LAe-jm-k6f" customClass="NestedScrollViewController" customModule="Samples" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="414-Wy-0t1">
-                        <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+                        <rect key="frame" x="0.0" y="0.0" width="375" height="778"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <scrollView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sBe-tN-uMi">
-                                <rect key="frame" x="0.0" y="32" width="375" height="635"/>
+                                <rect key="frame" x="0.0" y="32" width="375" height="746"/>
                                 <subviews>
                                     <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" translatesAutoresizingMaskIntoConstraints="NO" id="lFR-Sp-Sj1">
                                         <rect key="frame" x="0.0" y="0.0" width="375" height="968"/>
@@ -341,7 +342,7 @@
                             <outletCollection property="gestureRecognizers" destination="Fvp-Z6-eVc" appends="YES" id="Fds-J5-YCg"/>
                         </connections>
                     </view>
-                    <size key="freeformSize" width="375" height="667"/>
+                    <size key="freeformSize" width="375" height="778"/>
                     <connections>
                         <outlet property="scrollView" destination="sBe-tN-uMi" id="h4S-Zl-cLO"/>
                     </connections>
@@ -363,7 +364,7 @@
                     </connections>
                 </swipeGestureRecognizer>
             </objects>
-            <point key="canvasLocation" x="1311" y="806"/>
+            <point key="canvasLocation" x="2097" y="734"/>
         </scene>
         <!--Detail View Controller-->
         <scene sceneID="b6k-zi-3wn">
@@ -391,14 +392,14 @@
                                 </constraints>
                             </view>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Kva-Z7-0qY" customClass="OnSafeAreaView" customModule="Samples" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="734" width="375" height="44"/>
+                                <rect key="frame" x="0.0" y="700" width="375" height="44"/>
                                 <color key="backgroundColor" red="0.0078431372550000003" green="0.72156862749999995" blue="0.45882352939999999" alpha="1" colorSpace="calibratedRGB"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="44" id="DQJ-cY-cKx"/>
                                 </constraints>
                             </view>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" spacing="22" translatesAutoresizingMaskIntoConstraints="NO" id="tP3-oJ-4EB">
-                                <rect key="frame" x="130.5" y="108" width="114" height="82"/>
+                                <rect key="frame" x="130.66666666666666" y="132" width="114" height="82"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="c5r-jU-haj">
                                         <rect key="frame" x="0.0" y="0.0" width="114" height="30"/>
@@ -462,7 +463,7 @@
                     </connections>
                 </pongPressGestureRecognizer>
             </objects>
-            <point key="canvasLocation" x="1440.8" y="-23.388305847076463"/>
+            <point key="canvasLocation" x="655" y="734"/>
         </scene>
         <!--Debug Text View Controller-->
         <scene sceneID="Bkq-O7-q4A">
@@ -534,10 +535,10 @@ Section 1.10.33 of "de Finibus Bonorum et Malorum", written by Cicero in 45 BC
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="x1h-y1-h8q" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="729" y="-23"/>
+            <point key="canvasLocation" x="-1" y="734"/>
         </scene>
     </scenes>
     <inferredMetricsTieBreakers>
-        <segue reference="3yq-HE-Tgn"/>
+        <segue reference="r1P-2i-NDe"/>
     </inferredMetricsTieBreakers>
 </document>
