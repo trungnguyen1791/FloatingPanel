@@ -46,9 +46,13 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         }
     }
 
+    var currentMenu: Menu = .trackingTableView
+
     var mainPanelVC: FloatingPanelController!
     var detailPanelVC: FloatingPanelController!
-    var currentMenu: Menu = .trackingTableView
+    var settingsPanelVC: FloatingPanelController!
+
+    var settingsObserves: [NSKeyValueObservation] = []
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -62,6 +66,19 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        if #available(iOS 11.0, *) {
+            if let observation = navigationController?.navigationBar.observe(\.prefersLargeTitles, changeHandler: { (bar, _) in
+                self.tableView.reloadData()
+            }) {
+                settingsObserves.append(observation)
+            }
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        settingsObserves.removeAll()
     }
 
     func addMainPanel(with contentVC: UIViewController) {
@@ -100,19 +117,53 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
     // MARK:- TableViewDatasource
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return Menu.allCases.count
+        if #available(iOS 11.0, *) {
+            if navigationController?.navigationBar.prefersLargeTitles == true {
+                return Menu.allCases.count + 30
+            } else {
+                return Menu.allCases.count
+            }
+        } else {
+            return Menu.allCases.count
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        let menu = Menu.allCases[indexPath.row]
-        cell.textLabel?.text = menu.name
+        if Menu.allCases.count > indexPath.row {
+            let menu = Menu.allCases[indexPath.row]
+            cell.textLabel?.text = menu.name
+        } else {
+            cell.textLabel?.text = "\(indexPath.row) row"
+        }
         return cell
+    }
+
+    // MARK:- Actions
+    @IBAction func showDebugMenu(_ sender: UIBarButtonItem) {
+        // Initialize FloatingPanelController
+        settingsPanelVC = FloatingPanelController()
+
+        // Initialize FloatingPanelController and add the view
+        settingsPanelVC.surfaceView.cornerRadius = 6.0
+        settingsPanelVC.surfaceView.shadowHidden = false
+        settingsPanelVC.isRemovalInteractionEnabled = true
+
+        settingsPanelVC.delegate = self
+
+        let contentVC = storyboard?.instantiateViewController(withIdentifier: "SettingsViewController")
+
+        // Set a content view controller
+        settingsPanelVC.set(contentViewController: contentVC)
+
+        //  Add FloatingPanel to self.view
+        settingsPanelVC.addPanel(toParent: self, belowView: nil, animated: true)
     }
 
     // MARK:- TableViewDelegate
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard Menu.allCases.count > indexPath.row else { return }
         let menu = Menu.allCases[indexPath.row]
         let contentVC: UIViewController = {
             guard let storyboardID = menu.storyboardID else { return DebugTableViewController() }
@@ -150,6 +201,10 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
     }
 
     func floatingPanel(_ vc: FloatingPanelController, layoutFor newCollection: UITraitCollection) -> FloatingPanelLayout? {
+        if vc == settingsPanelVC {
+            return newCollection.verticalSizeClass == .compact ? RemovablePanelLandscapeLayout() :  RemovablePanelLayout()
+        }
+
         if currentMenu == .showRemovablePanel {
             return newCollection.verticalSizeClass == .compact ? RemovablePanelLandscapeLayout() :  RemovablePanelLayout()
         } else {
@@ -619,5 +674,31 @@ class TwoTabBarPanel2Layout: FloatingPanelLayout {
         case .half: return 261.0
         default: return nil
         }
+    }
+}
+
+class SettingsViewController: UIViewController {
+    @IBOutlet weak var largeTitlesSwicth: UISwitch!
+    @IBOutlet weak var translucentSwicth: UISwitch!
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if #available(iOS 11.0, *) {
+            let prefersLargeTitles = navigationController!.navigationBar.prefersLargeTitles
+            largeTitlesSwicth.setOn(prefersLargeTitles, animated: false)
+        } else {
+            largeTitlesSwicth.isEnabled = false
+        }
+        let isTranslucent = navigationController!.navigationBar.isTranslucent
+        translucentSwicth.setOn(isTranslucent, animated: false)
+    }
+
+    @IBAction func toggleLargeTitle(_ sender: UISwitch) {
+        if #available(iOS 11.0, *) {
+            navigationController?.navigationBar.prefersLargeTitles = sender.isOn
+        }
+    }
+    @IBAction func toggleTranslucent(_ sender: UISwitch) {
+        navigationController?.navigationBar.isTranslucent = sender.isOn
     }
 }
