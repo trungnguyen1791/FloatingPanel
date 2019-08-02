@@ -9,7 +9,7 @@
 import UIKit
 import FloatingPanel
 
-class SampleListViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, FloatingPanelControllerDelegate, FloatingPanelLayout {
+class SampleListViewController: UIViewController {
     @IBOutlet weak var tableView: UITableView!
 
     enum Menu: Int, CaseIterable {
@@ -17,9 +17,13 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         case trackingTextView
         case showDetail
         case showModal
+        case showFloatingPanelModal
         case showTabBar
+        case showPageView
         case showNestedScrollView
         case showRemovablePanel
+        case showIntrinsicView
+        case showContentInset
 
         var name: String {
             switch self {
@@ -27,9 +31,13 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
             case .trackingTextView: return "Scroll tracking(TextView)"
             case .showDetail: return "Show Detail Panel"
             case .showModal: return "Show Modal"
+            case .showFloatingPanelModal: return "Show Floating Panel Modal"
             case .showTabBar: return "Show Tab Bar"
+            case .showPageView: return "Show Page View"
             case .showNestedScrollView: return "Show Nested ScrollView"
             case .showRemovablePanel: return "Show Removable Panel"
+            case .showIntrinsicView: return "Show Intrinsic View"
+            case .showContentInset: return "Show with ContentInset"
             }
         }
 
@@ -39,16 +47,38 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
             case .trackingTextView: return "ConsoleViewController"
             case .showDetail: return "DetailViewController"
             case .showModal: return "ModalViewController"
+            case .showFloatingPanelModal: return nil
             case .showTabBar: return "TabBarViewController"
+            case .showPageView: return nil
             case .showNestedScrollView: return "NestedScrollViewController"
             case .showRemovablePanel: return "DetailViewController"
+            case .showIntrinsicView: return "IntrinsicViewController"
+            case .showContentInset: return nil
             }
         }
     }
 
+    var currentMenu: Menu = .trackingTableView
+
     var mainPanelVC: FloatingPanelController!
     var detailPanelVC: FloatingPanelController!
-    var currentMenu: Menu = .trackingTableView
+    var settingsPanelVC: FloatingPanelController!
+
+    var mainPanelObserves: [NSKeyValueObservation] = []
+    var settingsObserves: [NSKeyValueObservation] = []
+
+    lazy var pages: [UIViewController] = {
+        let page1 = FloatingPanelController(delegate: self)
+        page1.view.backgroundColor = .blue
+        page1.show()
+        let page2 = FloatingPanelController(delegate: self)
+        page2.view.backgroundColor = .red
+        page2.show()
+        let page3 = FloatingPanelController(delegate: self)
+        page3.view.backgroundColor = .green
+        page3.show()
+        return [page1, page2, page3]
+    }()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -56,19 +86,42 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Cell")
 
+        let searchController = UISearchController(searchResultsController: nil)
+        if #available(iOS 11.0, *) {
+            navigationItem.searchController = searchController
+            navigationItem.hidesSearchBarWhenScrolling = false
+            navigationItem.largeTitleDisplayMode = .automatic
+        } else {
+            // Fallback on earlier versions
+        }
+
         let contentVC = DebugTableViewController()
         addMainPanel(with: contentVC)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        if #available(iOS 11.0, *) {
+            if let observation = navigationController?.navigationBar.observe(\.prefersLargeTitles, changeHandler: { (bar, _) in
+                self.tableView.reloadData()
+            }) {
+                settingsObserves.append(observation)
+            }
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        settingsObserves.removeAll()
     }
 
     func addMainPanel(with contentVC: UIViewController) {
+        mainPanelObserves.removeAll()
+
         // Initialize FloatingPanelController
         mainPanelVC = FloatingPanelController()
         mainPanelVC.delegate = self
-        mainPanelVC.isRemovalInteractionEnabled = (currentMenu == .showRemovablePanel)
 
         // Initialize FloatingPanelController and add the view
         mainPanelVC.surfaceView.cornerRadius = 6.0
@@ -77,42 +130,119 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         // Set a content view controller
         mainPanelVC.set(contentViewController: contentVC)
 
+        // Enable tap-to-hide and removal interaction
+        switch currentMenu {
+        case .trackingTableView:
+            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleSurface(tapGesture:)))
+            tapGesture.cancelsTouchesInView = false
+            tapGesture.numberOfTapsRequired = 2
+            mainPanelVC.surfaceView.addGestureRecognizer(tapGesture)
+        case .showRemovablePanel, .showIntrinsicView:
+            mainPanelVC.isRemovalInteractionEnabled = true
+
+            let backdropTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackdrop(tapGesture:)))
+            mainPanelVC.backdropView.addGestureRecognizer(backdropTapGesture)
+        default:
+            break
+        }
+
         // Track a scroll view
         switch contentVC {
         case let consoleVC as DebugTextViewController:
             mainPanelVC.track(scrollView: consoleVC.textView)
 
         case let contentVC as DebugTableViewController:
+            let ob = contentVC.tableView.observe(\.isEditing) { (tableView, _) in
+                self.mainPanelVC.panGestureRecognizer.isEnabled = !tableView.isEditing
+            }
+            mainPanelObserves.append(ob)
             mainPanelVC.track(scrollView: contentVC.tableView)
         case let contentVC as NestedScrollViewController:
             mainPanelVC.track(scrollView: contentVC.scrollView)
         default:
             break
         }
+
         //  Add FloatingPanel to self.view
         mainPanelVC.addPanel(toParent: self, belowView: nil, animated: true)
     }
 
-    @objc func dismissDetailPanelVC()  {
-        detailPanelVC.removePanelFromParent(animated: true, completion: nil)
+    @objc
+    func handleSurface(tapGesture: UITapGestureRecognizer) {
+        switch mainPanelVC.position {
+        case .full:
+            mainPanelVC.move(to: .half, animated: true)
+        default:
+            mainPanelVC.move(to: .full, animated: true)
+        }
     }
 
-    // MARK:- TableViewDatasource
+    @objc func handleBackdrop(tapGesture: UITapGestureRecognizer) {
+        switch tapGesture.view {
+        case mainPanelVC.backdropView:
+            mainPanelVC.hide(animated: true, completion: nil)
+        case settingsPanelVC.backdropView:
+            settingsPanelVC.removePanelFromParent(animated: true)
+            settingsPanelVC = nil
+        default:
+            break
+        }
+    }
 
+    // MARK:- Actions
+    @IBAction func showDebugMenu(_ sender: UIBarButtonItem) {
+        guard settingsPanelVC == nil else { return }
+        // Initialize FloatingPanelController
+        settingsPanelVC = FloatingPanelController()
+
+        // Initialize FloatingPanelController and add the view
+        settingsPanelVC.surfaceView.cornerRadius = 6.0
+        settingsPanelVC.surfaceView.shadowHidden = false
+        settingsPanelVC.isRemovalInteractionEnabled = true
+
+        let backdropTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleBackdrop(tapGesture:)))
+        settingsPanelVC.backdropView.addGestureRecognizer(backdropTapGesture)
+
+        settingsPanelVC.delegate = self
+
+        let contentVC = storyboard?.instantiateViewController(withIdentifier: "SettingsViewController")
+
+        // Set a content view controller
+        settingsPanelVC.set(contentViewController: contentVC)
+
+        //  Add FloatingPanel to self.view
+        settingsPanelVC.addPanel(toParent: self, belowView: nil, animated: true)
+    }
+}
+
+extension SampleListViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return Menu.allCases.count
+        if #available(iOS 11.0, *) {
+            if navigationController?.navigationBar.prefersLargeTitles == true {
+                return Menu.allCases.count + 30
+            } else {
+                return Menu.allCases.count
+            }
+        } else {
+            return Menu.allCases.count
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        let menu = Menu.allCases[indexPath.row]
-        cell.textLabel?.text = menu.name
+        if Menu.allCases.count > indexPath.row {
+            let menu = Menu.allCases[indexPath.row]
+            cell.textLabel?.text = menu.name
+        } else {
+            cell.textLabel?.text = "\(indexPath.row) row"
+        }
         return cell
     }
+}
 
-    // MARK:- TableViewDelegate
-
+extension SampleListViewController: UITableViewDelegate {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        guard Menu.allCases.count > indexPath.row else { return }
         let menu = Menu.allCases[indexPath.row]
         let contentVC: UIViewController = {
             guard let storyboardID = menu.storyboardID else { return DebugTableViewController() }
@@ -124,7 +254,7 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
 
         switch menu {
         case .showDetail:
-            detailPanelVC?.removeFromParent()
+            detailPanelVC?.removePanelFromParent(animated: false)
 
             // Initialize FloatingPanelController
             detailPanelVC = FloatingPanelController()
@@ -141,6 +271,46 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         case .showModal, .showTabBar:
             let modalVC = contentVC
             present(modalVC, animated: true, completion: nil)
+
+        case .showPageView:
+            let pageVC = UIPageViewController(transitionStyle: .scroll, navigationOrientation: .horizontal, options: [:])
+            let closeButton = UIButton(type: .custom)
+            pageVC.view.addSubview(closeButton)
+            closeButton.setTitle("Close", for: .normal)
+            closeButton.translatesAutoresizingMaskIntoConstraints = false
+            closeButton.addTarget(self, action: #selector(dismissPresentedVC), for: .touchUpInside)
+            NSLayoutConstraint.activate([
+                closeButton.topAnchor.constraint(equalTo: pageVC.layoutGuide.topAnchor, constant: 16.0),
+                closeButton.leftAnchor.constraint(equalTo: pageVC.view.leftAnchor, constant: 16.0),
+                ])
+            pageVC.dataSource = self
+            pageVC.setViewControllers([pages[0]], direction: .forward, animated: false, completion: nil)
+            present(pageVC, animated: true, completion: nil)
+
+        case .showFloatingPanelModal:
+            let fpc = FloatingPanelController()
+            let contentVC = self.storyboard!.instantiateViewController(withIdentifier: "DetailViewController")
+            fpc.set(contentViewController: contentVC)
+            fpc.delegate = self
+
+            fpc.surfaceView.cornerRadius = 38.5
+            fpc.surfaceView.shadowHidden = false
+
+            fpc.isRemovalInteractionEnabled = true
+
+            self.present(fpc, animated: true, completion: nil)
+            
+        case .showContentInset:
+            let contentViewController = UIViewController()
+            contentViewController.view.backgroundColor = .green
+            
+            let fpc = FloatingPanelController()
+            fpc.set(contentViewController: contentViewController)
+            fpc.surfaceView.contentInsets = .init(top: 20, left: 20, bottom: 0, right: 20)
+            
+            fpc.delegate = self
+            fpc.isRemovalInteractionEnabled = true
+            self.present(fpc, animated: true, completion: nil)
         default:
             detailPanelVC?.removePanelFromParent(animated: true, completion: nil)
             mainPanelVC?.removePanelFromParent(animated: true) {
@@ -149,14 +319,60 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         }
     }
 
+    @objc func dismissPresentedVC() {
+        self.presentedViewController?.dismiss(animated: true, completion: nil)
+    }
+}
+
+extension SampleListViewController: FloatingPanelControllerDelegate {
     func floatingPanel(_ vc: FloatingPanelController, layoutFor newCollection: UITraitCollection) -> FloatingPanelLayout? {
-        if currentMenu == .showRemovablePanel {
+        if vc == settingsPanelVC {
+            return IntrinsicPanelLayout()
+        }
+
+        switch currentMenu {
+        case .showRemovablePanel:
             return newCollection.verticalSizeClass == .compact ? RemovablePanelLandscapeLayout() :  RemovablePanelLayout()
-        } else {
-            return self
+        case .showIntrinsicView:
+            return IntrinsicPanelLayout()
+        case .showFloatingPanelModal:
+            if vc != mainPanelVC && vc != detailPanelVC {
+                return ModalPanelLayout()
+            }
+            fallthrough
+        default:
+            return (newCollection.verticalSizeClass == .compact) ? nil  : self
         }
     }
 
+    func floatingPanel(_ vc: FloatingPanelController, shouldRecognizeSimultaneouslyWith gestureRecognizer: UIGestureRecognizer) -> Bool {
+        switch currentMenu {
+        case .showNestedScrollView:
+            return (vc.contentViewController as? NestedScrollViewController)?.nestedScrollView.gestureRecognizers?.contains(gestureRecognizer) ?? false
+        case .showPageView:
+            // Tips: Need to allow recognizing the pan gesture of UIPageViewController simultaneously.
+            return true
+        default:
+            return false
+        }
+    }
+
+    func floatingPanelDidEndRemove(_ vc: FloatingPanelController) {
+        switch vc {
+        case settingsPanelVC:
+            settingsPanelVC = nil
+        default:
+            break
+        }
+    }
+}
+
+/**
+ - Attention: `FloatingPanelLayout` must not be applied by the parent view
+ controller of a floating panel. But here `SampleListViewController` adopts it
+ purposely to check if the library prints an appropriate warning.
+ */
+extension SampleListViewController: FloatingPanelLayout {
     var initialPosition: FloatingPanelPosition {
         return .half
     }
@@ -166,16 +382,39 @@ class SampleListViewController: UIViewController, UITableViewDataSource, UITable
         case .full: return UIScreen.main.bounds.height == 667.0 ? 18.0 : 16.0
         case .half: return 262.0
         case .tip: return 69.0
+        case .hidden: return nil
         }
     }
 }
 
-class RemovablePanelLayout: FloatingPanelLayout {
+extension SampleListViewController: UIPageViewControllerDataSource {
+    func pageViewController(_ pageViewController: UIPageViewController, viewControllerAfter viewController: UIViewController) -> UIViewController? {
+        guard
+            let index = pages.firstIndex(of: viewController),
+            index + 1 < pages.count
+            else { return nil }
+        return pages[index + 1]
+    }
+    func pageViewController(_ pageViewController: UIPageViewController, viewControllerBefore viewController: UIViewController) -> UIViewController? {
+        guard
+            let index = pages.firstIndex(of: viewController),
+            index - 1 >= 0
+            else { return nil }
+        return pages[index - 1]
+    }
+}
+
+class IntrinsicPanelLayout: FloatingPanelIntrinsicLayout { }
+
+class RemovablePanelLayout: FloatingPanelIntrinsicLayout {
+    var supportedPositions: Set<FloatingPanelPosition> {
+        return [.full, .half]
+    }
     var initialPosition: FloatingPanelPosition {
         return .half
     }
-    var supportedPositions: Set<FloatingPanelPosition> {
-        return [.full, .half]
+    var topInteractionBuffer: CGFloat {
+        return 200.0
     }
     var bottomInteractionBuffer: CGFloat {
         return 261.0 - 22.0
@@ -183,7 +422,24 @@ class RemovablePanelLayout: FloatingPanelLayout {
 
     func insetFor(position: FloatingPanelPosition) -> CGFloat? {
         switch position {
-        case .full: return 16.0
+        case .half: return 130.0
+        default: return nil
+        }
+    }
+    func backdropAlphaFor(position: FloatingPanelPosition) -> CGFloat {
+        return 0.3
+    }
+}
+
+class RemovablePanelLandscapeLayout: FloatingPanelIntrinsicLayout {
+    var supportedPositions: Set<FloatingPanelPosition> {
+        return [.full, .half]
+    }
+    var bottomInteractionBuffer: CGFloat {
+        return 261.0 - 22.0
+    }
+    func insetFor(position: FloatingPanelPosition) -> CGFloat? {
+        switch position {
         case .half: return 261.0
         default: return nil
         }
@@ -193,22 +449,9 @@ class RemovablePanelLayout: FloatingPanelLayout {
     }
 }
 
-class RemovablePanelLandscapeLayout: FloatingPanelLayout {
-    var initialPosition: FloatingPanelPosition {
-        return .half
-    }
-    var supportedPositions: Set<FloatingPanelPosition> {
-        return [.half]
-    }
-    var bottomInteractionBuffer: CGFloat {
-        return 261.0 - 22.0
-    }
-
-    func insetFor(position: FloatingPanelPosition) -> CGFloat? {
-        switch position {
-        case .half: return 261.0
-        default: return nil
-        }
+class ModalPanelLayout: FloatingPanelIntrinsicLayout {
+    var topInteractionBuffer: CGFloat {
+        return 100.0
     }
     func backdropAlphaFor(position: FloatingPanelPosition) -> CGFloat {
         return 0.3
@@ -217,6 +460,7 @@ class RemovablePanelLandscapeLayout: FloatingPanelLayout {
 
 class NestedScrollViewController: UIViewController {
     @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var nestedScrollView: UIScrollView!
 
     @IBAction func longPressed(_ sender: Any) {
         print("LongPressed!")
@@ -231,14 +475,30 @@ class NestedScrollViewController: UIViewController {
 
 class DebugTextViewController: UIViewController, UITextViewDelegate {
     @IBOutlet weak var textView: UITextView!
+    @IBOutlet weak var textViewTopConstraint: NSLayoutConstraint!
 
     override func viewDidLoad() {
         super.viewDidLoad()
         textView.delegate = self
+        print("viewDidLoad: TextView --- ", textView.contentOffset, textView.contentInset)
 
         if #available(iOS 11.0, *) {
             textView.contentInsetAdjustmentBehavior = .never
         }
+    }
+
+    override func viewWillLayoutSubviews() {
+        print("viewWillLayoutSubviews: TextView --- ", textView.contentOffset, textView.contentInset, textView.frame)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        print("viewDidLayoutSubviews: TextView --- ", textView.contentOffset, textView.contentInset, textView.frame)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        print("TextView --- ", textView.contentOffset, textView.contentInset, textView.frame)
     }
 
     func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -249,16 +509,68 @@ class DebugTextViewController: UIViewController, UITextViewDelegate {
     }
 
     @IBAction func close(sender: UIButton) {
-        // Now impossible
-        // dismiss(animated: true, completion: nil)
-        (self.parent as? FloatingPanelController)?.removePanelFromParent(animated: true, completion: nil)
+        // (self.parent as? FloatingPanelController)?.removePanelFromParent(animated: true, completion: nil)
+        dismiss(animated: true, completion: nil)
     }
 }
 
-class DebugTableViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class InspectableViewController: UIViewController {
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        print(">>> Content View: viewWillLayoutSubviews", layoutInsets)
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        print(">>> Content View: viewDidLayoutSubviews", layoutInsets)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        print(">>> Content View: viewWillAppear", layoutInsets)
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        print(">>> Content View: viewDidAppear", view.bounds, layoutInsets)
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        print(">>> Content View: viewWillDisappear")
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        print(">>> Content View: viewDidDisappear")
+    }
+
+    override func willMove(toParent parent: UIViewController?) {
+        super.willMove(toParent: parent)
+        print(">>> Content View: willMove(toParent: \(String(describing: parent))")
+    }
+
+    override func didMove(toParent parent: UIViewController?) {
+        super.didMove(toParent: parent)
+        print(">>> Content View: didMove(toParent: \(String(describing: parent))")
+    }
+    public override func willTransition(to newCollection: UITraitCollection, with coordinator: UIViewControllerTransitionCoordinator) {
+        print(">>> Content View: willTransition(to: \(newCollection), with: \(coordinator))", layoutInsets)
+    }
+}
+
+class DebugTableViewController: InspectableViewController {
     weak var tableView: UITableView!
     var items: [String] = []
     var itemHeight: CGFloat = 66.0
+
+    enum Menu: String, CaseIterable {
+        case animateScroll = "Animate Scroll"
+        case changeContentSize = "Change content size"
+        case reorder = "Reorder"
+    }
+
+    var reorderButton: UIButton!
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -288,17 +600,21 @@ class DebugTableViewController: UIViewController, UITableViewDataSource, UITable
             stackView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: -22.0),
             ])
 
-        let button = UIButton()
-        button.setTitle("Animate Scroll", for: .normal)
-        button.setTitleColor(view.tintColor, for: .normal)
-        button.addTarget(self, action: #selector(animateScroll), for: .touchUpInside)
-        stackView.addArrangedSubview(button)
-
-        let button2 = UIButton()
-        button2.setTitle("Change content size", for: .normal)
-        button2.setTitleColor(view.tintColor, for: .normal)
-        button2.addTarget(self, action: #selector(changeContentSize), for: .touchUpInside)
-        stackView.addArrangedSubview(button2)
+        for menu in Menu.allCases {
+            let button = UIButton()
+            button.setTitle(menu.rawValue, for: .normal)
+            button.setTitleColor(view.tintColor, for: .normal)
+            switch menu {
+            case .animateScroll:
+                button.addTarget(self, action: #selector(animateScroll), for: .touchUpInside)
+            case .changeContentSize:
+                button.addTarget(self, action: #selector(changeContentSize), for: .touchUpInside)
+            case .reorder:
+                button.addTarget(self, action: #selector(reorderItems), for: .touchUpInside)
+                reorderButton = button
+            }
+            stackView.addArrangedSubview(button)
+        }
 
         for i in 0...100 {
             items.append("Items \(i)")
@@ -339,6 +655,16 @@ class DebugTableViewController: UIViewController, UITableViewDataSource, UITable
         self.present(actionSheet, animated: true, completion: nil)
     }
 
+    @objc func reorderItems() {
+        if reorderButton.titleLabel?.text == Menu.reorder.rawValue {
+            tableView.isEditing = true
+            reorderButton.setTitle("Cancel", for: .normal)
+        } else {
+            tableView.isEditing = false
+            reorderButton.setTitle(Menu.reorder.rawValue, for: .normal)
+        }
+    }
+
     func changeItems(_ count: Int) {
         items.removeAll()
         for i in 0..<count {
@@ -352,50 +678,12 @@ class DebugTableViewController: UIViewController, UITableViewDataSource, UITable
         (self.parent as! FloatingPanelController).removePanelFromParent(animated: true, completion: nil)
     }
 
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
-        //print("Content View: viewWillLayoutSubviews")
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        print("TableView --- ", scrollView.contentOffset, scrollView.contentInset)
     }
+}
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        //print("Content View: viewDidLayoutSubviews")
-    }
-
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        print("Content View: viewWillAppear")
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        print("Content View: viewDidAppear", view.bounds)
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        print("Content View: viewWillDisappear")
-    }
-
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        print("Content View: viewDidDisappear")
-    }
-
-    override func willMove(toParent parent: UIViewController?) {
-        super.willMove(toParent: parent)
-        print("Content View: willMove(toParent: \(String(describing: parent))")
-    }
-
-    override func didMove(toParent parent: UIViewController?) {
-        super.didMove(toParent: parent)
-        print("Content View: didMove(toParent: \(String(describing: parent))")
-    }
-
-    public override func willTransition(to newCollection: UITraitCollection, with coordinator: UIViewControllerTransitionCoordinator) {
-        print("Content View: willTransition(to: \(newCollection), with: \(coordinator))")
-    }
-
+extension DebugTableViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return items.count
     }
@@ -409,6 +697,12 @@ class DebugTableViewController: UIViewController, UITableViewDataSource, UITable
         cell.textLabel?.text = items[indexPath.row]
         return cell
     }
+}
+
+extension DebugTableViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        print("DebugTableViewController -- select row \(indexPath.row)")
+    }
 
     func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath) -> [UITableViewRowAction]? {
         return [
@@ -418,14 +712,21 @@ class DebugTableViewController: UIViewController, UITableViewDataSource, UITable
             }),
         ]
     }
+
+    func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+
+    func tableView(_ tableView: UITableView, moveRowAt sourceIndexPath: IndexPath, to destinationIndexPath: IndexPath) {
+        items.insert(items.remove(at: sourceIndexPath.row), at: destinationIndexPath.row)
+    }
 }
 
-class DetailViewController: UIViewController {
+class DetailViewController: InspectableViewController {
     @IBOutlet weak var closeButton: UIButton!
     @IBAction func close(sender: UIButton) {
-        // Now impossible
-        // dismiss(animated: true, completion: nil)
-        (self.parent as? FloatingPanelController)?.removePanelFromParent(animated: true, completion: nil)
+        // (self.parent as? FloatingPanelController)?.removePanelFromParent(animated: true, completion: nil)
+        dismiss(animated: true, completion: nil)
     }
 
     @IBAction func buttonPressed(_ sender: UIButton) {
@@ -521,15 +822,30 @@ class ModalSecondLayout: FloatingPanelLayout {
         case .full: return 18.0
         case .half: return 262.0
         case .tip: return 44.0
+        case .hidden: return nil
         }
     }
 }
 
 class TabBarViewController: UITabBarController {}
 
-class TabBarContentViewController: UIViewController, FloatingPanelControllerDelegate {
+class TabBarContentViewController: UIViewController {
+    enum Tab3Mode {
+        case changeOffset
+        case changeAutoLayout
+        var label: String {
+            switch self {
+            case .changeAutoLayout: return "Use AutoLayout(OK)"
+            case .changeOffset: return "Use ContentOffset(NG)"
+            }
+        }
+    }
     var fpc: FloatingPanelController!
     var consoleVC: DebugTextViewController!
+
+    var threeLayout: ThreeTabBarPanelLayout!
+    var tab3Mode: Tab3Mode = .changeAutoLayout
+    var switcherLabel: UILabel!
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
@@ -544,11 +860,47 @@ class TabBarContentViewController: UIViewController, FloatingPanelControllerDele
         // Set a content view controller and track the scroll view
         let consoleVC = storyboard?.instantiateViewController(withIdentifier: "ConsoleViewController") as! DebugTextViewController
         fpc.set(contentViewController: consoleVC)
+        consoleVC.textView.delegate = self // MUST call it before fpc.track(scrollView:)
         fpc.track(scrollView: consoleVC.textView)
         self.consoleVC = consoleVC
 
         //  Add FloatingPanel to self.view
         fpc.addPanel(toParent: self)
+
+
+        if tabBarItem.tag == 2 {
+            let switcher = UISwitch()
+            fpc.view.addSubview(switcher)
+            switcher.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                switcher.bottomAnchor.constraint(equalTo: fpc.surfaceView.topAnchor, constant: -16.0),
+                switcher.rightAnchor.constraint(equalTo: fpc.surfaceView.rightAnchor, constant: -16.0),
+                ])
+            switcher.isOn = true
+            switcher.tintColor = .white
+            switcher.backgroundColor = .white
+            switcher.layer.cornerRadius = 16.0
+            switcher.addTarget(self,
+                               action: #selector(changeTab3Mode(_:)),
+                               for: .valueChanged)
+            let label = UILabel()
+            label.text = tab3Mode.label
+            fpc.view.addSubview(label)
+            switcherLabel = label
+            label.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                label.centerYAnchor.constraint(equalTo: switcher.centerYAnchor, constant: 0.0),
+                label.rightAnchor.constraint(equalTo: switcher.leftAnchor, constant: -16.0),
+                ])
+
+            // Turn off the mask instead of content inset change
+            consoleVC.textView.clipsToBounds = false
+        }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        fpc.updateLayout()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -557,19 +909,143 @@ class TabBarContentViewController: UIViewController, FloatingPanelControllerDele
         fpc.removePanelFromParent(animated: false)
     }
 
+    // MARK: - Action
+
+    @IBAction func close(sender: UIButton) {
+        dismiss(animated: true, completion: nil)
+    }
+
+    // MARK: - Private
+
+    @objc
+    private func changeTab3Mode(_ sender: UISwitch) {
+        if sender.isOn {
+            tab3Mode = .changeAutoLayout
+        } else {
+            tab3Mode = .changeOffset
+        }
+        switcherLabel.text = tab3Mode.label
+    }
+}
+
+extension TabBarContentViewController: UITextViewDelegate {
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard self.tabBarItem.tag == 2 else { return }
+        // Reset an invalid content offset by a user after updating the layout
+        // of `consoleVC.textView`.
+        // NOTE: FloatingPanel doesn't implicitly reset the offset(i.e.
+        // Using KVO of `scrollView.contentOffset`). Because it can lead to an
+        // infinite loop if a user also resets a content offset as below and,
+        // in the situation, a user has to modify the library.
+        if fpc.position != .full, fpc.surfaceView.frame.minY > fpc.originYOfSurface(for: .full) {
+            scrollView.contentOffset = .zero
+        }
+    }
+}
+
+extension TabBarContentViewController: FloatingPanelControllerDelegate {
+    // MARK: - FloatingPanel
+
     func floatingPanel(_ vc: FloatingPanelController, layoutFor newCollection: UITraitCollection) -> FloatingPanelLayout? {
         switch self.tabBarItem.tag {
         case 0:
             return OneTabBarPanelLayout()
         case 1:
-            return TwoTabBarPanel2Layout()
+            return TwoTabBarPanelLayout()
+        case 2:
+            threeLayout = ThreeTabBarPanelLayout(parent: self)
+            return threeLayout
         default:
             return nil
         }
     }
 
-    @IBAction func close(sender: UIButton) {
-        dismiss(animated: true, completion: nil)
+    func floatingPanel(_ vc: FloatingPanelController, behaviorFor newCollection: UITraitCollection) -> FloatingPanelBehavior? {
+        switch self.tabBarItem.tag {
+        case 1:
+            return TwoTabBarPanelBehavior()
+        default:
+            return nil
+        }
+    }
+
+    func floatingPanelDidMove(_ vc: FloatingPanelController) {
+        guard self.tabBarItem.tag == 2 else { return }
+
+        switch tab3Mode {
+        case .changeAutoLayout:
+            /* Good solution: Manipulate top constraint */
+            assert(consoleVC.textViewTopConstraint != nil)
+            if vc.surfaceView.frame.minY + threeLayout.topPadding < vc.layoutInsets.top {
+                consoleVC.textViewTopConstraint?.constant = vc.layoutInsets.top - vc.surfaceView.frame.minY
+            } else {
+                consoleVC.textViewTopConstraint?.constant = threeLayout.topPadding
+            }
+        case .changeOffset:
+            /*
+             Bad solution: Manipulate scroll content inset
+
+             FloatingPanelController keeps a content offset in moving a panel
+             so that changing content inset or offset causes a buggy behavior.
+             */
+            guard let scrollView = consoleVC.textView else { return }
+            var insets = vc.adjustedContentInsets
+            if vc.surfaceView.frame.minY < vc.layoutInsets.top {
+                insets.top = vc.layoutInsets.top - vc.surfaceView.frame.minY
+            } else {
+                insets.top = 0.0
+            }
+            scrollView.contentInset = insets
+
+            if vc.surfaceView.frame.minY > 0 {
+                scrollView.contentOffset = CGPoint(x: 0.0,
+                                                   y: 0.0 - scrollView.contentInset.top)
+            }
+        }
+
+        if vc.surfaceView.frame.minY > vc.originYOfSurface(for: .half) {
+            let progress = (vc.surfaceView.frame.minY - vc.originYOfSurface(for: .half)) / (vc.originYOfSurface(for: .tip) - vc.originYOfSurface(for: .half))
+            threeLayout.leftConstraint.constant = max(min(progress, 1.0), 0.0) * threeLayout.sideMargin
+            threeLayout.rightConstraint.constant = -max(min(progress, 1.0), 0.0) * threeLayout.sideMargin
+        } else {
+            threeLayout.leftConstraint.constant = 0.0
+            threeLayout.rightConstraint.constant = 0.0
+        }
+
+        vc.view.layoutIfNeeded() // MUST
+    }
+
+    func floatingPanelDidChangePosition(_ vc: FloatingPanelController) {
+        guard self.tabBarItem.tag == 2 else { return }
+
+        switch tab3Mode {
+        case .changeAutoLayout:
+            /* Good Solution: Manipulate top constraint */
+            assert(consoleVC.textViewTopConstraint != nil)
+            consoleVC.textViewTopConstraint?.constant = (vc.position == .full) ? vc.layoutInsets.top : 17.0
+
+        case .changeOffset:
+            /* Bad Solution: Manipulate scroll content inset */
+            guard let scrollView = consoleVC.textView else { return }
+            var insets = vc.adjustedContentInsets
+            insets.top = (vc.position == .full) ? vc.layoutInsets.top : 0.0
+            scrollView.contentInset = insets
+            if scrollView.contentOffset.y - scrollView.contentInset.top < 0.0  {
+                scrollView.contentOffset = CGPoint(x: 0.0,
+                                                   y: 0.0 - scrollView.contentInset.top)
+            }
+        }
+
+        if vc.position == .tip {
+            threeLayout.leftConstraint.constant = threeLayout.sideMargin
+            threeLayout.rightConstraint.constant = -threeLayout.sideMargin
+        } else {
+            threeLayout.leftConstraint.constant = 0.0
+            threeLayout.rightConstraint.constant = 0.0
+        }
+        // Can call it, but it's not necessary because it will be also called
+        // by FloatingPanelController after the delegate method
+        vc.view.layoutIfNeeded()
     }
 }
 
@@ -606,12 +1082,15 @@ class OneTabBarPanelLayout: FloatingPanelLayout {
     }
 }
 
-class TwoTabBarPanel2Layout: FloatingPanelLayout {
+class TwoTabBarPanelLayout: FloatingPanelLayout {
     var initialPosition: FloatingPanelPosition {
         return .half
     }
     var supportedPositions: Set<FloatingPanelPosition> {
         return [.full, .half]
+    }
+    var topInteractionBuffer: CGFloat {
+        return 100.0
     }
     var bottomInteractionBuffer: CGFloat {
         return 261.0 - 22.0
@@ -619,9 +1098,91 @@ class TwoTabBarPanel2Layout: FloatingPanelLayout {
 
     func insetFor(position: FloatingPanelPosition) -> CGFloat? {
         switch position {
-        case .full: return 16.0
+        case .full: return 100.0
         case .half: return 261.0
         default: return nil
         }
+    }
+}
+
+class TwoTabBarPanelBehavior: FloatingPanelBehavior {
+    func allowsRubberBanding(for edge: UIRectEdge) -> Bool {
+        return (edge == .bottom || edge == .top)
+    }
+}
+
+
+class ThreeTabBarPanelLayout: FloatingPanelFullScreenLayout {
+    weak var parentVC: UIViewController!
+
+    var leftConstraint: NSLayoutConstraint!
+    var rightConstraint: NSLayoutConstraint!
+
+    let topPadding: CGFloat = 17.0
+    let sideMargin: CGFloat = 16.0
+
+    init(parent: UIViewController) {
+        parentVC = parent
+    }
+
+    var bottomInteractionBuffer: CGFloat = 44.0
+
+    var initialPosition: FloatingPanelPosition {
+        return .half
+    }
+    var supportedPositions: Set<FloatingPanelPosition> {
+        return [.full, .half, .tip]
+    }
+    func insetFor(position: FloatingPanelPosition) -> CGFloat? {
+        switch position {
+        case .full: return 0.0
+        case .half: return 261.0 + parentVC.layoutInsets.bottom
+        case .tip: return 88.0 + parentVC.layoutInsets.bottom
+        default: return nil
+        }
+    }
+    func backdropAlphaFor(position: FloatingPanelPosition) -> CGFloat {
+        return 0.3
+    }
+    func prepareLayout(surfaceView: UIView, in view: UIView) -> [NSLayoutConstraint] {
+        if #available(iOS 11.0, *) {
+            leftConstraint = surfaceView.leftAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leftAnchor, constant: 0.0)
+            rightConstraint = surfaceView.rightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.rightAnchor, constant: 0.0)
+        } else {
+            leftConstraint = surfaceView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 0.0)
+            rightConstraint = surfaceView.rightAnchor.constraint(equalTo: view.rightAnchor, constant: 0.0)
+        }
+        return [ leftConstraint, rightConstraint ]
+    }
+}
+
+class SettingsViewController: InspectableViewController {
+    @IBOutlet weak var largeTitlesSwicth: UISwitch!
+    @IBOutlet weak var translucentSwicth: UISwitch!
+    @IBOutlet weak var versionLabel: UILabel!
+
+    override func viewDidLoad() {
+        versionLabel.text = "Version: \(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "--")"
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        if #available(iOS 11.0, *) {
+            let prefersLargeTitles = navigationController!.navigationBar.prefersLargeTitles
+            largeTitlesSwicth.setOn(prefersLargeTitles, animated: false)
+        } else {
+            largeTitlesSwicth.isEnabled = false
+        }
+        let isTranslucent = navigationController!.navigationBar.isTranslucent
+        translucentSwicth.setOn(isTranslucent, animated: false)
+    }
+
+    @IBAction func toggleLargeTitle(_ sender: UISwitch) {
+        if #available(iOS 11.0, *) {
+            navigationController?.navigationBar.prefersLargeTitles = sender.isOn
+        }
+    }
+    @IBAction func toggleTranslucent(_ sender: UISwitch) {
+        navigationController?.navigationBar.isTranslucent = sender.isOn
     }
 }
